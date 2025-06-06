@@ -54,12 +54,15 @@ async fn main() -> std::io::Result<()> {
     let es_client = Elasticsearch::new(transport);
 
     println!("Connecting to DB: {}", database_url);
-    let port: u16 = env::var("PORT")
-        .unwrap_or_else(|_| "8080".to_string())
-        .parse()
-        .expect("PORT must be a number");
-
-    let address = format!("0.0.0.0:{}", port);
+    let (host, port) = if let Ok(port_str) = env::var("PORT") {
+        // PORT environment variable is set, likely on a server like Render
+        let port: u16 = port_str.parse().expect("PORT must be a number");
+        ("0.0.0.0", port)
+    } else {
+        // PORT environment variable is NOT set, assume local development
+        ("127.0.0.1", 8080) // Default local port
+    };
+    let address = format!("{}:{}", host, port);
 
     HttpServer::new(move || {
         App::new()
