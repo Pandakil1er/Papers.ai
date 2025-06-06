@@ -23,6 +23,7 @@ mod services;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
+
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let db = Database::connect(&database_url)
         .await
@@ -53,6 +54,12 @@ async fn main() -> std::io::Result<()> {
     let es_client = Elasticsearch::new(transport);
 
     println!("Connecting to DB: {}", database_url);
+    let port: u16 = env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse()
+        .expect("PORT must be a number");
+
+    let address = format!("0.0.0.0:{}", port);
 
     HttpServer::new(move || {
         App::new()
@@ -66,7 +73,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_all_images)
             .route("/hey", web::get().to(manual_hello))
     })
-    .bind(("0.0.0.0", 8080))?
+    .bind(address)? // Bind to the dynamic address
     .run()
     .await
 }
