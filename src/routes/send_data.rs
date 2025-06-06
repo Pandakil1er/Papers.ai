@@ -110,6 +110,7 @@ pub async fn upload(
                     break; // Exit the loop as summary is not empty
                 } else {
                     println!("Gemini returned an empty summary. Retrying...");
+
                     // Optionally, add a delay here to prevent hammering the API
                     // tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                 }
