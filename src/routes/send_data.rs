@@ -3,13 +3,15 @@ use crate::services::gemini::send_image_to_gemini_api;
 use actix_multipart::form::{json::Json as MpJson, tempfile::TempFile, MultipartForm};
 use actix_web::{post, web::Data, HttpResponse, Responder};
 use base64::{engine::general_purpose, Engine};
+use elasticsearch::{Elasticsearch, IndexParts};
 use infer;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
 use serde::Deserialize;
+use serde::Serialize;
 use serde_json::json;
 use std::env;
 use tokio::fs;
-use uuid::Uuid; // replace with the correct path to your `image.rs`
+use uuid::Uuid; // replace with the correct path to your `image.rs` // Add Elasticsearch imports
 
 #[derive(Debug, Deserialize)]
 struct Metadata {
@@ -23,9 +25,18 @@ struct UploadForm {
     json: MpJson<Metadata>,
 }
 
+#[derive(Serialize)]
+struct ImageIndex {
+    uuid: String,
+    name: String,
+    summary: String,
+    keywords: Vec<String>,
+}
+
 #[post("/upload")]
 pub async fn upload(
     db: Data<DatabaseConnection>,
+    es: Data<Elasticsearch>,
     MultipartForm(form): MultipartForm<UploadForm>,
 ) -> impl Responder {
     if form.json.name.trim().is_empty() {
@@ -56,7 +67,7 @@ pub async fn upload(
     let encoded_image = general_purpose::STANDARD.encode(&file_bytes);
 
     // 📁 Prepare target path
-    let uuid = uuid::Uuid::new_v4();
+    let uuid = Uuid::new_v4();
     let mut target_path = env::current_dir().unwrap();
     target_path.push("uploads");
     target_path.push(format!("{}-{}", uuid, file_name));
@@ -86,8 +97,9 @@ pub async fn upload(
 
     let mut summary = String::new();
     let mut keywords = Vec::new(); // Assuming keywords is a Vec or similar
-
-    // Loop until a non-empty summary is received
+                                   //
+                                   //
+                                   // Loop until a non-empty summary is received
     loop {
         match send_image_to_gemini_api(&encoded_image, mime_type).await {
             Ok((s, k)) => {
@@ -113,9 +125,10 @@ pub async fn upload(
         }
     }
 
-    // Now `summary` and `keywords` contain the valid data
     println!("Final Gemini summary: {}", summary);
     println!("Final Gemini keywords: {:?}", keywords);
+
+    // Now `summary` and `keywords` contain the valid data
 
     let new_image = image::ActiveModel {
         uuid: Set(uuid),
@@ -128,6 +141,25 @@ pub async fn upload(
     match new_image.insert(db.get_ref()).await {
         Ok(model) => {
             println!("Inserted image with UUID: {}", model.uuid);
+
+            // 🔍 Index in Elasticsearch
+            let doc = ImageIndex {
+                uuid: model.uuid.to_string(),
+                name: model.name.clone(),
+                summary: model.summary.clone(),
+                keywords: keywords.clone(),
+            };
+
+            let index_res = es
+                .index(IndexParts::IndexId("papers", &model.uuid.to_string()))
+                .body(json!(doc))
+                .send()
+                .await;
+
+            if let Err(e) = index_res {
+                println!("Elasticsearch indexing failed: {}", e);
+                // Optionally continue, or return error
+            }
             HttpResponse::Ok().json(json!({
                 "summary": summary,
                 "uuid": uuid.to_string()

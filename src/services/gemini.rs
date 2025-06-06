@@ -37,28 +37,18 @@ pub fn parse_summary_and_keywords(json_data: &str) -> Option<(String, Vec<String
     let response: Response = serde_json::from_str(json_data).ok()?;
     let part_text = &response.candidates.get(0)?.content.parts.get(0)?.text;
 
-    // Extract JSON block for CONCISESUMMARY
+    // Extract JSON block inside the ```json ... ``` section
     let re_json = Regex::new(r"```json\s*(\{[\s\S]*?\})\s*```").ok()?;
     let json_caps = re_json.captures(part_text)?;
     let json_blob = json_caps.get(1)?.as_str();
+
     let inner_json: Value = serde_json::from_str(json_blob).ok()?;
-    let summary = inner_json
-        .get("CONCISESUMMARY")?
-        .as_str()?
-        .trim()
-        .to_string();
+    let summary = inner_json.get("CONCISESUMMARY")?.as_str()?.to_string();
 
-    // Extract the second code block (after the JSON one)
-    let re_code_blocks =
-        Regex::new(r"```(?:json)?\s*[\s\S]*?```[\s\S]*?```(?:\s*\n)?([\s\S]*?)```").ok()?;
-    let keywords_block = re_code_blocks.captures(part_text)?.get(1)?.as_str();
-
-    // Extract after "KEYWORDS:" and split
-    let keywords_line = keywords_block.trim().strip_prefix("KEYWORDS:")?.trim();
-    let keywords: Vec<String> = keywords_line
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
+    let keywords_json = inner_json.get("KEYWORDS")?.as_array()?;
+    let keywords: Vec<String> = keywords_json
+        .iter()
+        .filter_map(|val| val.as_str().map(|s| s.to_string()))
         .collect();
 
     Some((summary, keywords))
@@ -101,6 +91,7 @@ pub async fn send_image_to_gemini_api(
         .await?;
 
     let response_text = res.text().await?;
+    println!("Response: {}", response_text);
     let (summary, keywords) = parse_summary_and_keywords(&response_text).unwrap_or_default();
     println!("{:?}\n{:?}", summary, keywords);
     Ok((summary, keywords))

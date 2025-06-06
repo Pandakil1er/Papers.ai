@@ -29,5 +29,6 @@ sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres"] }
 sea-orm-macros = "0.12"
 
 # Optional: dotenv support for DATABASE_URL
-dotenvy = "0.15"
 dotenv = "0.15.0"
+elasticsearch = { version = "8.18.0-alpha.1", features = ["rustls-tls"] }
+url = "2.5.4"
