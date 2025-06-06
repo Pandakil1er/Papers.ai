@@ -62,7 +62,7 @@ pub async fn send_image_to_gemini_api(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={}",
         api_key
     );
-    let prompt_text = "I am giving you a image give me a json with concise summary of this image starting with CONCISESUMMARY: and then give me 100 keywords to search for this image starting with KEYWORDS:";
+    let prompt_text = "I am giving you a image give me only a json and nothing more with concise summary of this image starting with CONCISESUMMARY: and then give me 100 keywords to search for this image starting with KEYWORDS:";
 
     let body = json!({
         "contents": [
