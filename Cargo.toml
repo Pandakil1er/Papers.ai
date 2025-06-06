@@ -32,3 +32,6 @@ sea-orm-macros = "0.12"
 dotenv = "0.15.0"
 elasticsearch = { version = "8.18.0-alpha.1", features = ["rustls-tls"] }
 url = "2.5.4"
+
+aes-gcm = "0.10" # For AES in GCM mode
+hex = "0.4"

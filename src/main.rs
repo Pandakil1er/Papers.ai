@@ -1,3 +1,4 @@
+use crate::services::crypto;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use elasticsearch::{
@@ -7,6 +8,7 @@ use elasticsearch::{
     },
     Elasticsearch,
 };
+use routes::delete::delete_image_by_uuid;
 use routes::get_all::get_all_images;
 use routes::get_one::get_image_by_uuid;
 use routes::hello::{echo, hello, manual_hello};
@@ -17,6 +19,7 @@ use std::env;
 use url::Url;
 
 mod entities;
+mod helper;
 mod routes;
 mod services;
 
@@ -73,6 +76,7 @@ async fn main() -> std::io::Result<()> {
             .service(upload)
             .service(get_image_by_uuid)
             .service(search)
+            .service(delete_image_by_uuid)
             .service(get_all_images)
             .route("/hey", web::get().to(manual_hello))
     })

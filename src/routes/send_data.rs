@@ -1,4 +1,5 @@
 use crate::entities::image;
+use crate::helper::decrypt;
 use crate::services::gemini::send_image_to_gemini_api;
 use actix_multipart::form::{json::Json as MpJson, tempfile::TempFile, MultipartForm};
 use actix_web::{post, web::Data, HttpResponse, Responder};
